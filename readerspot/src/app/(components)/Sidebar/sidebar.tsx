@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image"; // Import the Image component from Next.js
 import { useAppDispatch, useAppSelector } from "@/redux";
 import { setIsSidebarCollapsed } from "@/state";
 import {
@@ -14,38 +15,44 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import React from "react";
+import logo from "@/app/assets/Logo.png"
 
 interface SidebarLinkProps {
   href: string;
   icon: React.ElementType;
   label: string;
   isCollapsed: boolean;
-  isLogout?: boolean;  // Add isLogout prop to handle Log out styling
+  isLogout?: boolean;
 }
 
 const SidebarLink = ({ href, icon: Icon, label, isCollapsed, isLogout }: SidebarLinkProps) => {
   const pathname = usePathname();
-  const isActive = pathname === href || (pathname === "/" && href === "/dashboard");
+  const isActive = pathname === href || (pathname === "/" && href === "/library");
 
   return (
     <Link href={href}>
       <div
         className={`cursor-pointer flex items-center ${
           isCollapsed ? "justify-center py-4" : "justify-start px-8 py-4"
-        } hover:text-red-500 hover:bg-[#F9B217] gap-3 transition-colors ${
-          isActive ? "bg-[#F9B217] text-white" : ""
+        } gap-3 transition-colors ${
+          isActive ? "bg-white-300 text-yellow-500" : ""
         }`}
       >
         <Icon
-          className={`w-6 h-6 ${
+          className={`w-6 h-6 transition-colors ${
             isLogout
-              ? "text-red-500"
+              ? "hover:text-red-500 text-gray-700"
               : isActive
-              ? "text-[#F9B217]" // Active icon color
-              : "text-gray-700"
+              ? "text-yellow-500"
+              : "text-gray-700 hover:text-yellow-500"
           }`}
         />
-        <span className={`${isCollapsed ? "hidden" : "block"} font-medium text-gray-700`}>
+        <span
+          className={`${isCollapsed ? "hidden" : "block"} font-medium ${
+            isActive ? "text-yellow-500" : "text-gray-700"
+          } hover:text-yellow-500`}
+        >
           {label}
         </span>
       </div>
@@ -73,7 +80,13 @@ const Sidebar = () => {
           isSideBarCollapsed ? "px-5" : "px-8"
         }`}
       >
-        <div>Logo</div>
+        <Image
+          src={logo} 
+          alt="readerspot-logo"
+          width={100}
+          height={100}
+          className="rounded w-8"
+        />
         <h1 className={`${isSideBarCollapsed ? "hidden" : "block"} font-extrabold text-2xl`}>
           ReaderSpot
         </h1>
