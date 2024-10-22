@@ -1,5 +1,7 @@
 "use client";
 
+// This is the side nav
+
 import Image from "next/image"; // Import the Image component from Next.js
 import { useAppDispatch, useAppSelector } from "@/redux";
 import { setIsSidebarCollapsed } from "@/state";
