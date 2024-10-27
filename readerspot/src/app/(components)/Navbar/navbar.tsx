@@ -1,15 +1,21 @@
 "use client";
-// This is the top
+
+import { useState } from 'react';
 import { useAppDispatch, useAppSelector } from "@/redux";
 import { setIsDarkMode, setIsSidebarCollapsed } from "@/state";
-import { Bell, Menu, Moon, Search, Sun, Upload } from "lucide-react";
+import { Bell, Menu, Moon, Search, Sun, Upload, Cloud } from "lucide-react";
 import Image from "next/image";
 import logo from "@/app/assets/logo2.png"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/(components)/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/(components)/ui/tabs"
+import { Input } from "@/app/(components)/ui/input"
+import { Badge } from "@/app/(components)/ui/badge"
 
 const Navbar = () => {
   const dispatch = useAppDispatch();
   const isSideBarCollapsed = useAppSelector((state) => state.global.isSideBarCollapsed);
   const isDarkMode = useAppSelector((state) => state.global.isDarkMode);
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   const toggleSidebar = () => {
     dispatch(setIsSidebarCollapsed(!isSideBarCollapsed));
@@ -48,13 +54,63 @@ const Navbar = () => {
         <div className="hidden md:flex justify-between items-center gap-5">
           {/* Import Button and Upload Icon */}
           <div className="relative">
-            <button
-              className="bg-yellow-300 text-gray-900 font-semibold px-4 py-2 md:w-30 rounded-lg flex items-center gap-2 hover:bg-yellow-200 transition-all"
-              onClick={() => {}}
-            >
-              <Upload className="text-gray-900" size={18} />
-              Import
-            </button>
+            <Dialog open={isImportOpen} onOpenChange={setIsImportOpen} >
+              <DialogTrigger asChild>
+                <button
+                  className="bg-yellow-300 text-gray-900 font-semibold px-4 py-2 md:w-30 rounded-lg flex items-center gap-2 hover:bg-yellow-200 transition-all"
+                  onClick={() => setIsImportOpen(true)}
+                >
+                  <Upload className="text-gray-900" size={18} />
+                  Import
+                </button>
+              </DialogTrigger>
+
+              {/* Dark Background Overlay */}
+              {isImportOpen && (
+                <div className="fixed inset-0 bg-slate-900 bg-opacity-10 z-40" />
+              )}
+              
+              <DialogContent className="sm:max-w-[425px] z-50">
+                <DialogHeader>
+                  <DialogTitle>Book import</DialogTitle>
+                </DialogHeader>
+                <Tabs defaultValue="add" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="add">Add Books</TabsTrigger>
+                    <TabsTrigger value="imports">My Imports</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="add">
+                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-12">
+                      <Cloud className="h-10 w-10 text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-500 mb-4">Drag and Drop files here</p>
+                      <button className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">+ Browse Files</button>
+                    </div>
+                    <ul className="mt-4 text-sm text-gray-500">
+                      <li>• Only upload books that you have the legal right to share, whether they are free or paid.</li>
+                      <li>• Avoid sharing bad scans, incomplete e-books, or draft materials.</li>
+                      <li>• Share books in authorized formats: PDF, FB2, EPUB, LIT, LRF, MOBI, ODT, RTF, SNB, DJVU, AZW2, and AZW.</li>
+                      <li>• Do not upload magazines, articles, lectures, school or student materials, or any content that you don't have the rights to share.</li>
+                      <li>• If you come across any copyrighted content or violations, please report them.</li>
+                    </ul>
+                  </TabsContent>
+                  <TabsContent value="imports">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                      <Input placeholder="Search books, series, authors, genres" className="pl-8" />
+                    </div>
+                    <div className="flex gap-2 mt-2">
+                      <Badge variant="outline">All</Badge>
+                      <Badge variant="outline" className="bg-green-500 text-white">Free</Badge>
+                      <Badge variant="outline" className="bg-red-500 text-white">Paid</Badge>
+                      <Badge variant="outline" className="bg-yellow-500 text-white">Pending</Badge>
+                    </div>
+                    <ul className="mt-4 space-y-4">
+                      {/* Add your imported books list here */}
+                    </ul>
+                  </TabsContent>
+                </Tabs>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Bell Icon with Notification */}
