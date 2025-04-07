@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { useAppDispatch, useAppSelector } from "@/redux"
-import { setIsSidebarCollapsed } from "@/state"
+import { setIsSidebarCollapsed, setIsDarkMode } from "@/state"
 import {
   Book,
   BarChartIcon as ChartNoAxesColumn,
@@ -30,16 +30,13 @@ interface SidebarLinkProps {
 
 const SidebarLink = ({ href, icon: Icon, label, isCollapsed, isLogout, onClick }: SidebarLinkProps) => {
   const pathname = usePathname()
-  // Check if the current path matches the link
   const isActive = pathname === href || pathname.startsWith(href + "/")
 
   if (isLogout) {
     return (
       <button
         onClick={onClick}
-        className={`cursor-pointer flex items-center ${
-          isCollapsed ? "justify-center py-4" : "justify-start px-8 py-4"
-        } gap-3 transition-colors w-full`}
+        className={`cursor-pointer flex items-center ${isCollapsed ? "justify-center py-4" : "justify-start px-8 py-4"} gap-3 transition-colors w-full`}
       >
         <Icon className={`w-6 h-6 transition-colors text-gray-700 dark:text-gray-300 hover:text-red-500`} />
         <span
@@ -54,19 +51,13 @@ const SidebarLink = ({ href, icon: Icon, label, isCollapsed, isLogout, onClick }
   return (
     <Link href={href}>
       <div
-        className={`cursor-pointer flex items-center ${
-          isCollapsed ? "justify-center py-4" : "justify-start px-8 py-4"
-        } gap-3 transition-colors ${isActive ? "bg-white-300 text-yellow-500" : ""}`}
+        className={`cursor-pointer flex items-center ${isCollapsed ? "justify-center py-4" : "justify-start px-8 py-4"} gap-3 transition-colors ${isActive ? "bg-white-300 text-yellow-500" : ""}`}
       >
         <Icon
-          className={`w-6 h-6 transition-colors ${
-            isActive ? "text-yellow-500" : "text-gray-700 dark:text-gray-300 hover:text-yellow-500"
-          }`}
+          className={`w-6 h-6 transition-colors ${isActive ? "text-yellow-500" : "text-gray-700 dark:text-gray-300 hover:text-yellow-500"}`}
         />
         <span
-          className={`${isCollapsed ? "hidden" : "block"} font-medium ${
-            isActive ? "text-yellow-500" : "text-gray-700 dark:text-gray-300"
-          } hover:text-yellow-500`}
+          className={`${isCollapsed ? "hidden" : "block"} font-medium ${isActive ? "text-yellow-500" : "text-gray-700 dark:text-gray-300"} hover:text-yellow-500`}
         >
           {label}
         </span>
@@ -79,6 +70,7 @@ const Sidebar = () => {
   const dispatch = useAppDispatch()
   const { logout } = useAuth()
   const isSideBarCollapsed = useAppSelector((state) => state.global.isSideBarCollapsed)
+  const isDarkMode = useAppSelector((state) => state.global.isDarkMode)
 
   const toggleSidebar = () => {
     dispatch(setIsSidebarCollapsed(!isSideBarCollapsed))
@@ -88,17 +80,13 @@ const Sidebar = () => {
     await logout()
   }
 
-  const sidebarClassNames = `fixed flex flex-col ${
-    isSideBarCollapsed ? "w-0 md:w-16" : "w-72 md:w-64"
-  } bg-white dark:bg-gray-800 transition-all duration-300 overflow-hidden h-full shadow-md z-40`
+  const sidebarClassNames = `fixed flex flex-col ${isSideBarCollapsed ? "w-0 md:w-16" : "w-72 md:w-64"} bg-white dark:bg-gray-800 transition-all duration-300 overflow-hidden h-full shadow-md z-40`
 
   return (
     <div className={sidebarClassNames}>
       {/* LOGO */}
       <div
-        className={`flex gap-3 justify-between md:justify-normal items-center pt-8 ${
-          isSideBarCollapsed ? "px-5" : "px-8"
-        }`}
+        className={`flex gap-3 justify-between md:justify-normal items-center pt-8 ${isSideBarCollapsed ? "px-5" : "px-8"}`}
       >
         <Image
           src={logo || "/placeholder.svg"}
@@ -125,13 +113,7 @@ const Sidebar = () => {
         <SidebarLink href="/page/library" icon={Library} label="Library" isCollapsed={isSideBarCollapsed} />
         {/* Book link now points to /page/books */}
         <SidebarLink href="/page/books" icon={Book} label="Book" isCollapsed={isSideBarCollapsed} />
-        <SidebarLink
-          href="/page/leaderboards"
-          icon={ChartNoAxesColumn}
-          label="Leaderboards"
-          isCollapsed={isSideBarCollapsed}
-        />
-
+        
         {/* Responsive hr */}
         <hr className="border-t border-gray-300 dark:border-gray-700 mx-3 my-4" />
         <span className="flex flex-col justify-between items-center py-4 text-gray-700 dark:text-gray-300">

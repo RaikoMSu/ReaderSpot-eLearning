@@ -15,10 +15,10 @@ export default function OnboardingLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${inter.className} bg-background text-foreground`}>
+    <div className="dark">
+      <div className={`${inter.className} bg-background text-foreground`}>
         {children}
-      </body>
-    </html>
+      </div>
+    </div>
   )
 } 

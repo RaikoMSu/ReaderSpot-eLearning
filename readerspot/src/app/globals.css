@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Login/Register background */
+.auth-background {
+  background-image: url('/assets/loginregister/bookpic.png');
+  background-size: cover;
+  background-position: center;
+}
+
 *,
 *::before,
 *::after {
@@ -17,11 +24,11 @@ body,
   @apply text-sm;
   @apply bg-gray-500;
   @apply text-gray-900;
-  font-family: var(--font-poppins), sans-serif;
+  @apply font-sans;
 }
 
 h1, h2, h3, h4, h5, h6, p {
-  font-family: var(--font-poppins), sans-serif; 
+  @apply font-poppins;
 }
 
 @layer base {
@@ -78,6 +85,57 @@ h1, h2, h3, h4, h5, h6, p {
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
+}
+
+/* Focus styles for better accessibility */
+:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+.dark :focus-visible {
+  outline-color: hsl(var(--ring));
+}
+
+/* Improved contrast for text elements in dark mode */
+.dark p, .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.dark .text-muted-foreground {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Better dark mode transitions */
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* More visible scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.4);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.8);
 }
 
 @layer base {

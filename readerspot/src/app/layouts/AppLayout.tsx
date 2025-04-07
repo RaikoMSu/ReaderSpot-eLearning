@@ -16,12 +16,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isSideBarCollapsed = useAppSelector((state) => state.global.isSideBarCollapsed)
   const isDarkMode = useAppSelector((state) => state.global.isDarkMode)
 
-  // Redirect unauthenticated users to login
+  // Redirect unauthenticated users to login, but not during logout
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && !pathname.includes("/page/login") && !pathname.includes("/page/register")) {
-      router.push("/page/login")
+    // Skip this redirect if:
+    // 1. Auth is still loading
+    // 2. We're already on a login/register page
+    // 3. URL has logout=true parameter (handled by AuthContext)
+    if (isLoading || 
+        pathname.includes("/page/login") || 
+        pathname.includes("/page/register") ||
+        window.location.search.includes("logout=true")) {
+      return;
     }
-  }, [isAuthenticated, isLoading, router, pathname])
+    
+    // Only redirect if user is definitely not authenticated
+    if (!isAuthenticated) {
+      router.push("/page/login");
+    }
+  }, [isAuthenticated, isLoading, router, pathname]);
 
   // Apply dark mode class
   useEffect(() => {
@@ -43,19 +55,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // For login and register pages, don't show navbar and sidebar
-  if (!isAuthenticated || pathname.includes("/page/login") || pathname.includes("/page/register")) {
-    return <>{children}</>
+  // For login, register, and edit profile pages, don't show layout
+  const noLayoutPages = [
+    "/page/login",
+    "/page/register",
+    "/page/profile/edit",
+  ];
+
+  if (!isAuthenticated || noLayoutPages.some(page => pathname.includes(page))) {
+    return <>{children}</>;
   }
 
-  // For authenticated users, show the full layout
+  // For authenticated users on other pages, show the full layout
   return (
     <div
       className={`${isDarkMode ? "dark" : "light"} flex bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white w-full min-h-screen`}
     >
       <Sidebar />
       <main
-        className={`flex flex-col w-full h-full py-7 px-9 bg-gray-50 dark:bg-gray-900 ${isSideBarCollapsed ? "md:pl-24" : "md:pl-72"}`}
+        className={`flex flex-col w-full py-7 px-9 bg-gray-50 dark:bg-gray-900 ${isSideBarCollapsed ? "md:pl-16" : "md:pl-64"}`}
       >
         <Navbar />
         {children}

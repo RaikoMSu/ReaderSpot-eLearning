@@ -11,20 +11,20 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ progress, previousProgress = 
   const progressRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
-    if (progressRef.current) {
-      // Start with the previous progress value
-      progressRef.current.style.width = `${previousProgress}%`;
-      
-      // Use requestAnimationFrame to trigger the animation after a small delay
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          if (progressRef.current) {
-            progressRef.current.style.transition = 'width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)';
-            progressRef.current.style.width = `${progress}%`;
-          }
-        }, 50);
-      });
-    }
+    const element = progressRef.current;
+    if (!element) return;
+
+    // Set initial width
+    element.style.cssText = `width: ${previousProgress}%`;
+    
+    // Use animation frame for smoother animation
+    const animFrame = setTimeout(() => {
+      if (element) {
+        element.style.cssText = `width: ${progress}%; transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)`;
+      }
+    }, 50);
+    
+    return () => clearTimeout(animFrame);
   }, [progress, previousProgress]);
 
   return (

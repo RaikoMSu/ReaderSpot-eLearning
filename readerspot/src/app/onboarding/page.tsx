@@ -1,39 +1,54 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import ProgressBar from '../(components)/ProgressBar';
-import LanguageCard from '../(components)/LanguageCard';
-import GenreButton from '../(components)/ui/GenreButton';
-import GenderOption from '../(components)/GenderOption';
-import BackButton from '../(components)/BackButton';
-import ActionButton from '../(components)/ActionButton';
-import ProfileForm from '../(components)/ui/ProfileForm';
-import AnimatedBackground from '../(components)/AnimatedBackground';
+import ProgressBar from '@/app/(components)/ProgressBar';
+import LanguageCard from '@/app/(components)/LanguageCard';
+import GenreButton from '@/app/(components)/ui/GenreButton';
+import GenderOption from '@/app/(components)/GenderOption';
+import BackButton from '@/app/(components)/BackButton';
+import ActionButton from '@/app/(components)/ActionButton';
+import ProfileForm from '@/app/(components)/ui/ProfileForm';
+import AnimatedBackground from '@/app/(components)/AnimatedBackground';
 import { toast } from 'sonner';
+import { useAuth } from '@/app/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
+
+// Import flag SVGs
+import flagSpain from '@/app/assets/flags/Flag_of_Spain.svg'
+import flagFrance from '@/app/assets/flags/Flag_of_France.svg'
+import flagJapan from '@/app/assets/flags/Flag_of_Japan.svg'
+import flagKorea from '@/app/assets/flags/Flag_of_South_Korea.svg'
+import flagGermany from '@/app/assets/flags/Flag_of_Germany.svg'
+import flagIndia from '@/app/assets/flags/Flag_of_India.svg'
+import flagItaly from '@/app/assets/flags/Flag_of_Italy.svg'
+import flagChina from '@/app/assets/flags/Flag_of_Peoples_Republic_of_China.svg'
+import flagRussia from '@/app/assets/flags/Flag_of_Russia.svg'
+import flagSaudiArabia from '@/app/assets/flags/Flag_of_Saudi_Arabia.svg'
+import flagUSA from '@/app/assets/flags/Flag_of_United_States.svg'
+import flagPortugal from '@/app/assets/flags/Flag_of_Portugal.svg'
 
 // Types
 type Language = {
   code: string
   name: string
-  learners: number
-  flag: string
+  flag: string | any // Allow for imported SVG
 }
 
 const languages: Language[] = [
-  { code: "es", name: "Spanish", learners: 125000, flag: "/lovable-uploads/6d2bafd0-99ee-44d6-b5aa-81a716b93aef.png" },
-  { code: "fr", name: "French", learners: 120000, flag: "/lovable-uploads/1c18b515-cdd4-4b9c-ae9a-515e8e3a10fb.png" },
-  { code: "ja", name: "Japanese", learners: 100000, flag: "/lovable-uploads/4e72be17-8ddc-4f7c-a347-35a03922154a.png" },
-  { code: "ko", name: "Korean", learners: 90000, flag: "/lovable-uploads/c597432e-71fc-45d4-a260-8bb98d086a86.png" },
-  { code: "de", name: "German", learners: 80000, flag: "/flags/de.png" },
-  { code: "hi", name: "Hindi", learners: 70000, flag: "/flags/in.png" },
-  { code: "it", name: "Italian", learners: 65000, flag: "/flags/it.png" },
-  { code: "zh", name: "Chinese", learners: 60000, flag: "/flags/cn.png" },
-  { code: "ru", name: "Russian", learners: 50000, flag: "/flags/ru.png" },
-  { code: "ar", name: "Arabic", learners: 45000, flag: "/flags/sa.png" },
-  { code: "en", name: "English", learners: 40000, flag: "/flags/gb.png" },
-  { code: "pt", name: "Portuguese", learners: 35000, flag: "/flags/pt.png" },
+  { code: "es", name: "Spanish", flag: flagSpain },
+  { code: "fr", name: "French", flag: flagFrance },
+  { code: "ja", name: "Japanese", flag: flagJapan },
+  { code: "ko", name: "Korean", flag: flagKorea },
+  { code: "de", name: "German", flag: flagGermany },
+  { code: "hi", name: "Hindi", flag: flagIndia },
+  { code: "it", name: "Italian", flag: flagItaly },
+  { code: "zh", name: "Chinese", flag: flagChina },
+  { code: "ru", name: "Russian", flag: flagRussia },
+  { code: "ar", name: "Arabic", flag: flagSaudiArabia },
+  { code: "en", name: "English", flag: flagUSA },
+  { code: "pt", name: "Portuguese", flag: flagPortugal },
 ]
 
 const genres = [
@@ -70,18 +85,77 @@ const containerVariants = {
 
 const OnboardingPage = () => {
   const router = useRouter()
+  const { user, isLoading } = useAuth()
   const [step, setStep] = useState(1)
   const [selectedLanguage, setSelectedLanguage] = useState<string>("")
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
   const [selectedGender, setSelectedGender] = useState<string>("")
-  const [profileData, setProfileData] = useState<{
-    name: string
-    bio: string
+  // Use a ref to store profile data to avoid render cycles
+  const profileDataRef = React.useRef<{
+    dateOfBirth: string
+    country: string
     avatar?: File
   } | null>(null)
   const [progress, setProgress] = useState(25)
   const [previousProgress, setPreviousProgress] = useState(0)
   const [titleWords, setTitleWords] = useState<string[]>([])
+  // Add a state to force re-render when profile data changes
+  const [forceUpdate, setForceUpdate] = useState(false)
+  // Add state to track if completion is in progress
+  const [isCompleteInProgress, setIsCompleteInProgress] = useState(false)
+
+  useEffect(() => {
+    console.log("Onboarding page loaded, user:", user?.id, "isLoading:", isLoading);
+    
+    // Never redirect while loading - this is critical to prevent loops
+    if (isLoading) {
+      console.log("Auth is still loading, waiting before any redirects...");
+      return;
+    }
+    
+    // After loading completes, check for user
+    if (!user) {
+      console.warn("User not authenticated on onboarding page (after auth loaded)");
+      
+      // Only redirect if not already in a loop
+      const recentLoads = JSON.parse(localStorage.getItem('onboardingPageLoads') || '[]');
+      if (recentLoads.length <= 5) {
+        // Delay redirect slightly to allow for state to settle
+        setTimeout(() => {
+          if (!user && !isLoading) {
+            console.log("Redirecting to login after auth loaded (no user)");
+            // Use direct window.location for a cleaner navigation
+            window.location.href = '/page/login?message=Please log in to complete onboarding';
+          }
+        }, 500);
+      } else {
+        console.error("Detected potential redirect loop, sending to clear auth");
+        window.location.href = '/clear-auth?source=onboarding_loop';
+      }
+      return;
+    }
+    
+    // Only track page loads if we have a user
+    if (user) {
+      // Track recent onboarding page loads to detect loops
+      const now = Date.now();
+      const recentLoads = JSON.parse(localStorage.getItem('onboardingPageLoads') || '[]');
+      
+      // Add current timestamp
+      recentLoads.push(now);
+      
+      // Only keep loads from the last 10 seconds
+      const recentLoadsFiltered = recentLoads.filter((time: number) => now - time < 10000);
+      
+      // Save back to localStorage
+      localStorage.setItem('onboardingPageLoads', JSON.stringify(recentLoadsFiltered));
+      
+      // Check for potential loop
+      if (recentLoadsFiltered.length > 5) {
+        console.warn("Rapid onboarding page loads detected, possible loop");
+      }
+    }
+  }, [user, router, isLoading]);
 
   useEffect(() => {
     switch(step) {
@@ -102,6 +176,23 @@ const OnboardingPage = () => {
     }
   }, [step])
 
+  useEffect(() => {
+    // Check for navigation failures
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (step === 4 && isCompleteInProgress) {
+        // If onboarding completion is in progress, don't show confirmation dialog
+        e.preventDefault();
+        return null;
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [step, isCompleteInProgress]);
+
   const handleLanguageSelect = (code: string) => {
     setSelectedLanguage(code)
   }
@@ -119,15 +210,18 @@ const OnboardingPage = () => {
     setSelectedGender(gender)
   }
 
-  const handleProfileUpdate = (data: {
-    name: string
-    bio: string
+  const handleProfileUpdate = useCallback((data: {
+    dateOfBirth: string
+    country: string
     avatar?: File
   }) => {
-    setProfileData(data)
-  }
+    // Store in ref instead of state to avoid re-renders
+    profileDataRef.current = data
+    // Force button re-evaluation by updating a state
+    setForceUpdate(prev => !prev)
+  }, []);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     setPreviousProgress(progress)
     
     if (step === 1 && selectedLanguage) {
@@ -139,23 +233,210 @@ const OnboardingPage = () => {
     } else if (step === 3 && selectedGender) {
       setStep(4)
       setProgress(100)
-    } else if (step === 4 && profileData && profileData.name) {
-      console.log("Onboarding complete with:", { 
-        selectedLanguage, 
-        selectedGenres, 
-        selectedGender,
-        profileData 
-      })
+    } else if (step === 4 && user) {
+      // Set flag to indicate completion is in progress
+      setIsCompleteInProgress(true)
       
-      toast.success("Profile successfully created!", {
-        description: "Welcome to your learning journey!"
-      })
-      
-      setTimeout(() => {
-        router.push('/library')
-      }, 1500)
+      try {
+        // Disable the complete button to prevent multiple submissions
+        const completeButton = document.querySelector("[data-complete-button='true']");
+        if (completeButton) {
+          completeButton.textContent = "Processing...";
+          completeButton.setAttribute("disabled", "true");
+        }
+        
+        // Get profile data with fallbacks
+        const { dateOfBirth, country } = profileDataRef.current || {
+          dateOfBirth: '2000-01-01', 
+          country: 'United States'
+        };
+        
+        console.log("Completing onboarding for user:", user.id)
+        
+        // Process avatar first to get the URL
+        let avatarUrl = null;
+        if (profileDataRef.current?.avatar) {
+          console.log("Processing avatar before updating profile");
+          avatarUrl = await processAvatarUpload(user.id, profileDataRef.current.avatar);
+          console.log("Avatar processed, URL:", avatarUrl);
+        }
+        
+        // First update the critical profile flag in database
+        try {
+          console.log("Setting onboarding completion flag in database...");
+          const updateData: any = { has_completed_onboarding: true };
+          
+          // Add avatar URL to update if we have one
+          if (avatarUrl) {
+            updateData.avatar_url = avatarUrl;
+            console.log("Including avatar URL in profile update:", avatarUrl);
+          }
+          
+          const { error: profileUpdateError } = await supabase
+            .from('user_profiles')
+            .update(updateData)
+            .eq('user_id', user.id);
+            
+          if (profileUpdateError) {
+            console.error("Profile update error:", profileUpdateError);
+            throw profileUpdateError;
+          } else {
+            console.log("Successfully marked onboarding as complete in database", updateData);
+            
+            // Set persistent flag to prevent redirect loops
+            localStorage.setItem('hasCompletedOnboarding', 'true');
+            localStorage.setItem('onboardingCompletedTime', Date.now().toString());
+            
+            // Immediately update the context to prevent redirect loops
+            window.dispatchEvent(new CustomEvent('auth:profileUpdated', {
+              detail: { 
+                hasCompletedOnboarding: true,
+                ...(avatarUrl && { avatarUrl })
+              }
+            }));
+            
+            // Now update preferences (after the critical flag is set)
+            try {
+              console.log("Updating preferences...");
+              const { data: existingPref } = await supabase
+                .from('user_preferences')
+                .select('id')
+                .eq('user_id', user.id)
+                .maybeSingle();
+                
+              if (existingPref) {
+                // Update existing record
+                await supabase
+                  .from('user_preferences')
+                  .update({ 
+                    date_of_birth: dateOfBirth,
+                    country: country,
+                    language: selectedLanguage || 'en',
+                    target_language: selectedLanguage || 'en',
+                    preferred_genres: selectedGenres.length > 0 ? selectedGenres : ['Romance', 'Sci-Fi', 'Adventure'],
+                    gender: selectedGender || 'Prefer not to say',
+                    has_completed_onboarding: true
+                  })
+                  .eq('user_id', user.id);
+                  
+                console.log("Preferences updated successfully");
+              } else {
+                // Insert new record
+                await supabase
+                  .from('user_preferences')
+                  .insert({ 
+                    user_id: user.id,
+                    date_of_birth: dateOfBirth,
+                    country: country,
+                    language: selectedLanguage || 'en',
+                    target_language: selectedLanguage || 'en',
+                    preferred_genres: selectedGenres.length > 0 ? selectedGenres : ['Romance', 'Sci-Fi', 'Adventure'],
+                    gender: selectedGender || 'Prefer not to say',
+                    has_completed_onboarding: true
+                  });
+                  
+                console.log("Preferences created successfully");
+              }
+            } catch (prefError) {
+              // Non-critical error, just log it
+              console.error("Error updating preferences (non-critical):", prefError);
+            }
+            
+            // Clean up before redirect
+            localStorage.removeItem('redirectHistory');
+            localStorage.removeItem('onboardingPageLoads');
+            localStorage.removeItem('lastRedirect');
+            localStorage.removeItem('noRedirect');
+            
+            // Show success message
+            toast.success("Profile created successfully! Redirecting to library...");
+            
+            // Force immediate navigation to library with a delay to ensure UI update
+            setTimeout(() => {
+              console.log("Redirecting to library page");
+              // Use direct navigation for cleaner page transition
+              window.location.href = '/page/library';
+            }, 1000);
+          }
+        } catch (err) {
+          console.error("Profile update exception:", err);
+          toast.error("Error updating profile. Please try again.");
+          setIsCompleteInProgress(false);
+          
+          // Reset button state
+          if (completeButton) {
+            completeButton.textContent = "Complete";
+            completeButton.removeAttribute("disabled");
+          }
+          return;
+        }
+      } catch (error) {
+        console.error("Onboarding completion error:", error);
+        toast.error("An error occurred. Please try again.");
+        setIsCompleteInProgress(false);
+        
+        // Reset button state
+        const completeButton = document.querySelector("[data-complete-button='true']");
+        if (completeButton) {
+          completeButton.textContent = "Complete";
+          completeButton.removeAttribute("disabled");
+        }
+      }
     }
   }
+
+  // Helper function to process avatar upload separately
+  const processAvatarUpload = async (userId: string, avatar?: File): Promise<string | null> => {
+    if (!avatar) return null;
+    
+    try {
+      console.log("Processing avatar upload:", avatar.name, avatar.size);
+      
+      // Add file size check to avoid uploading very large files
+      if (avatar.size > 5 * 1024 * 1024) {
+        console.error("Avatar file too large:", avatar.size);
+        toast.error("Avatar file too large (max 5MB). Using default avatar instead.");
+        return null;
+      }
+      
+      const fileExt = avatar.name.split('.').pop();
+      const fileName = `${userId}-avatar-${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+      
+      console.log("Uploading avatar to path:", filePath);
+      
+      // Upload with proper error handling
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, avatar, {
+          cacheControl: '3600',
+          upsert: true
+        });
+      
+      if (uploadError) {
+        console.error("Avatar upload error:", uploadError);
+        return null;
+      }
+      
+      console.log("Avatar uploaded successfully, getting public URL");
+      
+      // Get the public URL
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      
+      if (!data) {
+        console.error("Failed to get public URL for avatar");
+        return null;
+      }
+      
+      const avatarUrl = data.publicUrl;
+      console.log("Avatar URL generated:", avatarUrl);
+      
+      return avatarUrl;
+    } catch (err) {
+      console.error("Avatar processing error:", err);
+      return null;
+    }
+  };
 
   const handleBack = () => {
     setPreviousProgress(progress)
@@ -172,34 +453,65 @@ const OnboardingPage = () => {
     }
   }
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     if (step === 2) {
       setPreviousProgress(progress)
       setStep(3)
       setProgress(75)
-    } else if (step === 4) {
-      console.log("Skipped profile completion. Onboarding complete with:", { 
-        selectedLanguage, 
-        selectedGenres, 
-        selectedGender
-      })
-      
-      toast.success("Onboarding complete!", {
-        description: "You can update your profile later in settings."
-      })
-      
-      setTimeout(() => {
-        router.push('/library')
-      }, 1500)
+    } else if (step === 4 && user) {
+      try {
+        // Show loading toast
+        toast.loading("Finalizing setup...");
+        
+        // Try to update profile but don't block on errors
+        try {
+          const { error: skipError } = await supabase
+            .from('user_profiles')
+            .update({ 
+              has_completed_onboarding: true 
+            })
+            .eq('user_id', user.id);
+            
+          if (skipError) {
+            console.error("Error updating profile on skip:", skipError);
+          }
+        } catch (err) {
+          console.error("Error on skip (non-blocking):", err);
+        }
+
+        toast.success("Onboarding complete!");
+
+        // Force immediate navigation without setTimeout
+        try {
+          router.push('/page/library');
+        } catch (error) {
+          console.error("Router navigation failed, using window.location as fallback", error);
+          // Fallback to window.location if router fails
+          window.location.href = '/page/library';
+        }
+      } catch (error) {
+        toast.error("An error occurred. Navigating anyway...");
+        
+        // Force immediate navigation even on error
+        try {
+          router.push('/page/library');
+        } catch (redirectError) {
+          console.error("Router navigation failed, using window.location as fallback", redirectError);
+          // Fallback to window.location if router fails
+          window.location.href = '/page/library';
+        }
+      }
     }
   }
 
   const isButtonDisabled = () => {
-    if (step === 1) return !selectedLanguage
-    if (step === 2) return selectedGenres.length < 3
-    if (step === 3) return !selectedGender
-    if (step === 4) return !(profileData && profileData.name)
-    return false
+    switch (step) {
+      case 1: return !selectedLanguage;
+      case 2: return selectedGenres.length < 3;
+      case 3: return !selectedGender;
+      case 4: return false; // Always enable the button in step 4
+      default: return false;
+    }
   }
 
   return (
@@ -287,7 +599,6 @@ const OnboardingPage = () => {
                   key={lang.code}
                   code={lang.code}
                   name={lang.name}
-                  learners={lang.learners}
                   flagUrl={lang.flag}
                   selected={selectedLanguage === lang.code}
                   onClick={() => handleLanguageSelect(lang.code)}
@@ -331,7 +642,8 @@ const OnboardingPage = () => {
 
           {/* Action Buttons */}
           <div className="mt-10 flex justify-center space-x-4">
-            {(step === 2 || step === 4) && (
+            {/* Only show Skip button on step 2, not on step 4 */}
+            {step === 2 && (
               <ActionButton 
                 onClick={handleSkip}
                 isPrimary={false}
@@ -343,6 +655,7 @@ const OnboardingPage = () => {
             <ActionButton
               onClick={handleContinue}
               disabled={isButtonDisabled()}
+              data-complete-button={step === 4 ? "true" : "false"}
             >
               {step === 4 ? 'Complete' : 'Continue'}
             </ActionButton>

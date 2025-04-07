@@ -1,24 +1,25 @@
 'use client'
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/(components)/ui/dialog"
-import { Button } from "@/app/(components)/ui/button"
-import { Progress } from "@/app/(components)/ui/progress"
-import { BookOpen, CircleAlert, Share2, Star } from 'lucide-react'
+import { BookOpen, CircleAlert, Star } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"
+import { Button } from "./ui/button"
+import { Progress } from "./ui/progress"
+
+// Use the helper types to overcome TypeScript issues
+type BookType = {
+  id: number
+  cover: string | null | undefined
+  title: string
+  author?: string
+  description?: string
+  progress?: number
+}
 
 interface BookModalProps {
   isOpen: boolean
   onClose: () => void
-  book: {
-    id: number
-    cover: string | any
-    title: string
-    author?: string
-    description?: string
-    progress?: number
-  }
+  book: BookType
 }
 
 export default function BookModal({ isOpen, onClose, book }: BookModalProps) {
@@ -38,12 +39,11 @@ export default function BookModal({ isOpen, onClose, book }: BookModalProps) {
         
         <div className="flex gap-4 mt-4">
           <div className="relative w-32 h-48 flex-shrink-0">
-            <Image 
+            {/* Use regular img tag to avoid Next.js Image component errors */}
+            <img 
               src={book.cover || "/placeholder.svg"} 
-              alt={book.title} 
-              layout="fill"
-              objectFit="cover"
-              className="rounded-md"
+              alt={book.title}
+              className="rounded-md object-cover w-full h-full"
             />
           </div>
           

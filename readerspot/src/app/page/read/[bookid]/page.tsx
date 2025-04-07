@@ -1,60 +1,97 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { ChevronLeft, X, Menu, ChevronRight } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { ChevronLeft, X, Menu, ChevronRight, Loader2 } from "lucide-react"
 import { Button } from "@/app/(components)/ui/button"
 import { ScrollArea } from "@/app/(components)/ui/scroll-area"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/app/(components)/ui/sheet"
+import { supabase } from "@/lib/supabase"
+import { useToast } from "@/app/(components)/ui/use-toast"
 
 interface ReadPageProps {
   params: {
-    bookId: string
+    bookid: string
   }
 }
 
 export default function ReadPage({ params }: ReadPageProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
   const [showToc, setShowToc] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [book, setBook] = useState<any>(null)
+  const [chapters, setChapters] = useState<any[]>([])
+  const [currentChapter, setCurrentChapter] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [chapterContent, setChapterContent] = useState("")
+  
+  // Get chapter index from URL param or default to 0
+  const chapterIndex = parseInt(searchParams.get('chapter') || '0')
 
-  // Mock data for the book content
-  const bookContent = {
-    title: "I Had That Same Dream Again",
-    chapters: [
-      { id: "1", title: "Copyrights and Credits" },
-      { id: "2", title: "Title Page" },
-      { id: "3", title: "Chapter 1" },
-      { id: "4", title: "Chapter 2" },
-      { id: "5", title: "Chapter 3" },
-      { id: "6", title: "Chapter 4" },
-      { id: "7", title: "Chapter 5" },
-      { id: "8", title: "Chapter 6", active: true },
-      { id: "9", title: "Chapter 7" },
-      { id: "10", title: "Chapter 8" },
-      { id: "11", title: "Chapter 9" },
-      { id: "12", title: "Chapter 10" },
-      { id: "13", title: "Chapter 11" },
-      { id: "14", title: "Newsletter" },
-    ],
-    content: `
-      「なんてことしてるの！ 治療しなくちゃ！」
-      
-      「あ、あんた、何？」
-      
-      「ばんそうこう持ってるから、これ貼って病院行きましょう！」
-      
-      「ちょ、あのね、大丈夫だから騒がないでくれる」
-      
-      慌てる私に対して、南さんはもう落ち着いていました。後から知ったことですが、さすがは高校生さんです。
-      
-      私は南さんのお願いを聞くため、ひとみ先生に教えてもらった方法でどうにか落ち着こうと思い、すうはあと息をよく吸い込んで吐きました。そうすると私の心に入った空気が隙間を作って、少し大きめのパジャマを着た時みたいに、気持ちがゆるりとするのです。
-      
-      すーはー。すーはー。すーはー。
-      
-      気持ちがゆるゆるになった頃、私はやっと南さんにハンカチとばんそうこうを差し出すことに成功しました。すると南さんはしぶしぶ「持ってるよ」と言いながら、自分のハンカチで手首を拭きました。私の出したばんそうこうは、屋上の床に置かれたまま使われませんでした。
-    `,
-  }
+  useEffect(() => {
+    const fetchBookData = async () => {
+      setLoading(true)
+      try {
+        // Fetch book data
+        const { data: bookData, error: bookError } = await supabase
+          .from('books')
+          .select('*')
+          .eq('id', params.bookid)
+          .single()
+        
+        if (bookError) {
+          throw bookError
+        }
+        
+        setBook(bookData)
+        
+        // Fetch chapters
+        const { data: chaptersData, error: chaptersError } = await supabase
+          .from('chapters')
+          .select('*')
+          .eq('book_id', params.bookid)
+          .order('order_index', { ascending: true })
+        
+        if (chaptersError) {
+          throw chaptersError
+        }
+        
+        setChapters(chaptersData || [])
+        
+        // Set current chapter
+        if (chaptersData && chaptersData.length > 0) {
+          const chapter = chaptersData[Math.min(chapterIndex, chaptersData.length - 1)]
+          setCurrentChapter(chapter)
+          setChapterContent(chapter.content)
+        } else if (bookData.file_type === 'pdf') {
+          // For PDFs, we provide a link to view directly
+          setChapterContent(`
+            <div class="text-center py-12">
+              <p class="mb-4">This is a PDF document and needs to be viewed in a PDF viewer.</p>
+              <a href="${bookData.file_url}" target="_blank" class="px-4 py-2 bg-yellow-400 text-black rounded">
+                Open PDF
+              </a>
+            </div>
+          `)
+        } else {
+          setChapterContent("No content available for this book.")
+        }
+      } catch (error) {
+        console.error('Error fetching book:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to load book content. Please try again.',
+          variant: 'destructive',
+        })
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchBookData()
+  }, [params.bookid, chapterIndex, toast])
 
   useEffect(() => {
     // Calculate progress based on scroll position
@@ -69,6 +106,12 @@ export default function ReadPage({ params }: ReadPageProps) {
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
+  
+  const navigateToChapter = (index: number) => {
+    if (index >= 0 && index < chapters.length) {
+      router.push(`/page/read/${params.bookid}?chapter=${index}`)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white flex flex-col">
@@ -78,11 +121,13 @@ export default function ReadPage({ params }: ReadPageProps) {
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
             <X className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-medium">{bookContent.title}</h1>
+          <h1 className="text-lg font-medium truncate max-w-[200px] md:max-w-md">
+            {book?.title || 'Loading...'}
+          </h1>
         </div>
 
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          To exit full screen, press <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">F11</span>
+        <div className="text-sm text-gray-500 dark:text-gray-400 hidden md:block">
+          {currentChapter?.title || 'Chapter'}
         </div>
 
         <Sheet open={showToc} onOpenChange={setShowToc}>
@@ -99,19 +144,37 @@ export default function ReadPage({ params }: ReadPageProps) {
               <SheetTitle className="text-left">Table of Contents</SheetTitle>
             </SheetHeader>
             <ScrollArea className="h-[calc(100vh-100px)] mt-6">
-              <ul className="space-y-4">
-                {bookContent.chapters.map((chapter) => (
-                  <li key={chapter.id}>
-                    <a
-                      href={`#chapter-${chapter.id}`}
-                      className={`block py-2 px-4 rounded-md ${chapter.active ? "bg-yellow-400/10 text-yellow-500 font-medium" : "hover:bg-gray-100 dark:hover:bg-gray-800"}`}
-                      onClick={() => setShowToc(false)}
-                    >
-                      {chapter.title}
-                    </a>
-                  </li>
-                ))}
-              </ul>
+              {loading ? (
+                <div className="flex items-center justify-center h-24">
+                  <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              ) : chapters.length > 0 ? (
+                <ul className="space-y-4">
+                  {chapters.map((chapter, index) => (
+                    <li key={chapter.id}>
+                      <a
+                        href={`/page/read/${params.bookid}?chapter=${index}`}
+                        className={`block py-2 px-4 rounded-md ${
+                          index === chapterIndex
+                            ? "bg-yellow-400/10 text-yellow-500 font-medium"
+                            : "hover:bg-gray-100 dark:hover:bg-gray-800"
+                        }`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setShowToc(false)
+                          navigateToChapter(index)
+                        }}
+                      >
+                        {chapter.title || `Chapter ${index + 1}`}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No chapters available for this book.
+                </div>
+              )}
             </ScrollArea>
           </SheetContent>
         </Sheet>
@@ -119,26 +182,49 @@ export default function ReadPage({ params }: ReadPageProps) {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-4 md:p-8 max-w-3xl mx-auto">
-        <div className="space-y-6 text-lg leading-relaxed">
-          {bookContent.content.split("\n\n").map((paragraph, index) => (
-            <p key={index} className="whitespace-pre-line">
-              {paragraph}
-            </p>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-[60vh]">
+            <Loader2 className="h-10 w-10 animate-spin text-yellow-400 mb-4" />
+            <p className="text-gray-500">Loading chapter content...</p>
+          </div>
+        ) : (
+          <div className="space-y-6 text-lg leading-relaxed">
+            {chapterContent.includes('<') ? (
+              <div dangerouslySetInnerHTML={{ __html: chapterContent }} />
+            ) : (
+              chapterContent.split("\n\n").map((paragraph, index) => (
+                <p key={index} className="whitespace-pre-line">
+                  {paragraph}
+                </p>
+              ))
+            )}
+          </div>
+        )}
 
         <div className="mt-8 text-right text-sm text-gray-500 dark:text-gray-400">
-          <span>91446 / 124385 (73.52%)</span>
+          <span>Progress: {progress}%</span>
         </div>
       </div>
 
       {/* Footer */}
       <footer className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 sticky bottom-0">
-        <Button variant="ghost" size="icon">
+        <Button 
+          variant="ghost" 
+          size="icon"
+          disabled={chapterIndex <= 0 || loading}
+          onClick={() => navigateToChapter(chapterIndex - 1)}
+        >
           <ChevronLeft className="h-5 w-5" />
         </Button>
-        <div className="text-sm text-gray-500 dark:text-gray-400">Page 42 of 57</div>
-        <Button variant="ghost" size="icon">
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          {loading ? 'Loading...' : chapters.length > 0 ? `Chapter ${chapterIndex + 1} of ${chapters.length}` : 'No chapters'}
+        </div>
+        <Button 
+          variant="ghost" 
+          size="icon"
+          disabled={chapterIndex >= chapters.length - 1 || loading}
+          onClick={() => navigateToChapter(chapterIndex + 1)}
+        >
           <ChevronRight className="h-5 w-5" />
         </Button>
       </footer>

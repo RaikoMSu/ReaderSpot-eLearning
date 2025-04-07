@@ -7,8 +7,7 @@ import { motion } from 'framer-motion'
 interface LanguageCardProps {
   code: string
   name: string
-  learners: number
-  flagUrl: string
+  flagUrl: string | any // Allow for imported SVG
   selected: boolean
   onClick: () => void
 }
@@ -16,11 +15,13 @@ interface LanguageCardProps {
 const LanguageCard: React.FC<LanguageCardProps> = ({
   code,
   name,
-  learners,
   flagUrl,
   selected,
   onClick
 }) => {
+  // Handle both string URLs and imported SVGs
+  const flagSrc = typeof flagUrl === 'string' ? flagUrl : flagUrl.src;
+
   return (
     <motion.button
       onClick={onClick}
@@ -33,23 +34,24 @@ const LanguageCard: React.FC<LanguageCardProps> = ({
           ? 'bg-amber-500 text-black'
           : 'bg-gray-800/50 hover:bg-gray-700/50 backdrop-blur-sm'
       }`}
+      aria-pressed={selected}
+      aria-label={`Select ${name} language`}
     >
       <div className="flex flex-col items-center space-y-3">
         <div className="relative w-12 h-12 rounded-lg overflow-hidden shadow-lg">
           <Image
-            src={flagUrl}
-            alt={name}
+            src={flagSrc}
+            alt={`${name} flag`}
             fill
+            priority
             className="object-cover"
-            sizes="48px"
+            sizes="(max-width: 768px) 24px, 48px"
+            loading="eager"
           />
         </div>
         
         <div className="text-center">
           <h3 className="font-semibold">{name}</h3>
-          <p className={`text-sm ${selected ? 'text-black/70' : 'text-gray-400'}`}>
-            {learners.toLocaleString()} learners
-          </p>
         </div>
       </div>
     </motion.button>

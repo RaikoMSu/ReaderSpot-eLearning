@@ -31,17 +31,47 @@ export default function LibraryPage() {
     router.push("/page/read/1") // Navigate to the reading page for book ID 1
   }
 
+  useEffect(() => {
+    // Clear any loop detection or redirection flags when successfully reaching library
+    const clearLoopFlags = () => {
+      try {
+        console.log("Clearing any loop detection flags on library page");
+        localStorage.removeItem('redirectHistory');
+        localStorage.removeItem('lastRedirect');
+        localStorage.removeItem('noRedirect');
+        localStorage.removeItem('recovering_from_loop');
+        localStorage.removeItem('force_fresh_login');
+        localStorage.removeItem('onboarding_page_loaded');
+        localStorage.removeItem('onboarding_last_loaded');
+        // Don't remove onboarding_completed status flags
+      } catch (e) {
+        console.error("Error clearing loop flags:", e);
+      }
+    };
+    
+    // When library page loads successfully, this is a safe spot to clear navigation flags
+    clearLoopFlags();
+    
+    // Rest of the initialization code...
+  }, []);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">My Library</h1>
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <p className="text-lg">Welcome, {userMetadata?.username || user?.email}</p>
+        <p className="text-lg">Welcome, {userMetadata?.username || 'Reader'}</p>
         <p className="text-gray-600 dark:text-gray-400 mt-2">Your personal reading space</p>
       </div>
 
       {/* Featured Book Banner */}
-      <div className="relative h-[400px] rounded-lg overflow-hidden mb-8">
-        <Image src={bgimage || "/placeholder.svg"} alt="The Garden of Words" layout="fill" objectFit="cover" />
+      <div className="relative h-[400px] rounded-lg overflow-hidden mb-8 mt-8">
+        <Image 
+          src={bgimage || "/placeholder.svg"} 
+          alt="The Garden of Words" 
+          fill
+          priority
+          className="object-cover"
+        />
         <div className="absolute inset-0 bg-black bg-opacity-30 flex flex-col justify-end p-8">
           <h1 className="text-6xl font-bold mb-2 text-white">言の葉の庭</h1>
           <h2 className="text-2xl mb-4 text-white">The Garden of Words</h2>

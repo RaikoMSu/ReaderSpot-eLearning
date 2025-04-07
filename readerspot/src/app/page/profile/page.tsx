@@ -9,12 +9,12 @@ import { Edit, Book, Award, Clock, Calendar, Trophy, FlameIcon as Fire, BookOpen
 import logo from "@/app/assets/Logo.png"
 
 export default function ProfilePage() {
-  const { user } = useAuth()
+  const { user, userMetadata } = useAuth()
   const router = useRouter()
 
   // Mock data for the profile
   const profileData = {
-    username: user?.username || "RaikoMS",
+    username: userMetadata?.username || "User",
     level: "Intermediate",
     progress: 5,
     joinDate: "September 2021",
@@ -46,12 +46,6 @@ export default function ProfilePage() {
         name: "Scholar",
         icon: <Book className="h-8 w-8 text-yellow-500" />,
         description: "Learned 50 words in a day",
-      },
-      {
-        id: 4,
-        name: "Winner",
-        icon: <Trophy className="h-8 w-8 text-yellow-400" />,
-        description: "Ranked #23 in leaderboards",
       },
       {
         id: 5,
@@ -97,14 +91,17 @@ export default function ProfilePage() {
                 <div className="relative mb-4">
                   <div className="w-32 h-32 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden">
                     <Image
-                      src={logo || "/placeholder.svg"}
+                      src={userMetadata?.avatarUrl || logo}
                       alt="Profile"
                       width={128}
                       height={128}
-                      className="rounded-full object-cover"
+                      className="rounded-full h-full w-full object-cover"
                     />
                   </div>
-                  <div className="absolute bottom-0 right-0 bg-yellow-400 rounded-full p-2 cursor-pointer">
+                  <div 
+                    className="absolute bottom-0 right-0 bg-yellow-400 rounded-full p-2 cursor-pointer"
+                    onClick={() => router.push('/page/profile/settings')}
+                  >
                     <Camera className="h-4 w-4 text-black" />
                   </div>
                 </div>
