@@ -12,6 +12,7 @@ import {
   Menu,
   MessageCircleQuestion,
   Settings,
+  BookOpen,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -111,8 +112,7 @@ const Sidebar = () => {
         <span className="flex flex-col justify-between items-center py-4 text-gray-700 dark:text-gray-300">Main</span>
         {/* Library link now points to /page/library */}
         <SidebarLink href="/page/library" icon={Library} label="Library" isCollapsed={isSideBarCollapsed} />
-        {/* Book link now points to /page/books */}
-        <SidebarLink href="/page/books" icon={Book} label="Book" isCollapsed={isSideBarCollapsed} />
+        <SidebarLink href="/page/mybooks" icon={BookOpen} label="My Books" isCollapsed={isSideBarCollapsed} />
         
         {/* Responsive hr */}
         <hr className="border-t border-gray-300 dark:border-gray-700 mx-3 my-4" />

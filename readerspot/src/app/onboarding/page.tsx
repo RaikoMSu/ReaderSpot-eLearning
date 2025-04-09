@@ -14,6 +14,7 @@ import AnimatedBackground from '@/app/(components)/AnimatedBackground';
 import { toast } from 'sonner';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { SUPPORTED_GENRES } from '@/app/api/books/route';
 
 // Import flag SVGs
 import flagSpain from '@/app/assets/flags/Flag_of_Spain.svg'
@@ -49,15 +50,6 @@ const languages: Language[] = [
   { code: "ar", name: "Arabic", flag: flagSaudiArabia },
   { code: "en", name: "English", flag: flagUSA },
   { code: "pt", name: "Portuguese", flag: flagPortugal },
-]
-
-const genres = [
-  "Romance", "Comedy", "Comics", "Biography", "Sci-Fi",
-  "Psychology", "Arts and Photography", "Adventure", "Travel",
-  "Science and Technology", "Children's", "Horror", "Thriller",
-  "Fantasy", "Action", "Inspiration", "Mystery", "Instructional",
-  "Literature", "Business and Economics", "Poetry", "Reference",
-  "Society", "Politics", "Philosophy", "Sports", "Self-Help"
 ]
 
 const genders = [
@@ -610,7 +602,7 @@ const OnboardingPage = () => {
           {/* Step 2: Genre Selection */}
           {step === 2 && (
             <div className="flex flex-wrap gap-3 justify-center">
-              {genres.map((genre) => (
+              {SUPPORTED_GENRES.map((genre) => (
                 <GenreButton
                   key={genre}
                   genre={genre}
