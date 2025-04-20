@@ -21,59 +21,56 @@ export async function GET(request: Request) {
       );
     }
 
-    // Fetch user preferences
+    // Fetch user preferences from the correct table using maybeSingle
     console.log('Querying user_preferences table for user_id:', userId);
     
-    const { data: preferences, error } = await supabase
+    const { data: userPreferences, error: queryError } = await supabase
       .from('user_preferences')
-      .select('*')
+      .select('*')  // Select all columns to see what's available
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();  // Use maybeSingle() to prevent PGRST116 errors
 
-    console.log('Query result:', { preferences, error });
+    console.log('Full preferences data:', userPreferences);
 
-    if (error) {
-      console.error('Error fetching user preferences:', error);
-      
-      // If the error is that no row was found, return empty preferences
-      if (error.code === 'PGRST116') {
-        console.log('No preferences found, using default genres');
-        
-        // Try fetching from user_profiles to see if we can find preferences there
-        console.log('Checking user_profiles table as fallback');
-        try {
-          const { data: profile } = await supabase
-            .from('user_profiles')
-            .select('preferred_genres')
-            .eq('user_id', userId)
-            .single();
-            
-          console.log('User profile data:', profile);
-          
-          if (profile?.preferred_genres && Array.isArray(profile.preferred_genres)) {
-            console.log('Found genres in user_profiles:', profile.preferred_genres);
-            return NextResponse.json({
-              preferred_genres: profile.preferred_genres
-            });
-          }
-        } catch (profileError) {
-          console.error('Error checking user_profiles:', profileError);
-        }
-        
-        // Fall back to defaults if nothing found
-        return NextResponse.json({
-          preferred_genres: ['Fiction', 'Fantasy', 'Mystery']
-        });
-      }
-      
+    if (queryError) {
+      // Real database error (not just missing rows)
+      console.error('Error fetching user preferences (database error):', queryError);
       return NextResponse.json(
-        { error: 'Failed to fetch user preferences' },
+        { error: 'Database error when fetching user preferences' },
         { status: 500 }
       );
     }
-
-    console.log('Successfully found preferences:', preferences);
-    return NextResponse.json(preferences);
+    
+    if (!userPreferences) {
+      // No preferences found for this user
+      console.log('No preferences found for user, returning default genres');
+      return NextResponse.json({
+        preferred_genres: ['Fiction', 'Fantasy', 'Mystery']
+      });
+    }
+    
+    // Check different possible field names
+    const genres = userPreferences.preferred_genres || 
+                   userPreferences.preferredGenres || 
+                   userPreferences.preferred_genre ||
+                   userPreferences.genre_preferences;
+    
+    if (genres && Array.isArray(genres) && genres.length > 0) {
+      console.log('Found user preferred genres:', genres);
+      
+      // Return the complete userPreferences but ensure preferred_genres is set correctly
+      return NextResponse.json({
+        ...userPreferences,
+        preferred_genres: genres
+      });
+    } else {
+      // No genres found in user preferences
+      console.log('No genres found in user preferences, using default genres');
+      return NextResponse.json({
+        ...userPreferences,
+        preferred_genres: ['Fiction', 'Fantasy', 'Mystery']
+      });
+    }
   } catch (error) {
     console.error('Error in user preferences API:', error);
     return NextResponse.json(

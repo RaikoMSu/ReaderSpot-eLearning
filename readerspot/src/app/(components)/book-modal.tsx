@@ -2,9 +2,9 @@
 
 import { useRouter } from 'next/navigation'
 import { BookOpen, CircleAlert, Star } from 'lucide-react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog"
-import { Button } from "./ui/button"
-import { Progress } from "./ui/progress"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/app/(components)/ui/dialog"
+import { Button } from "@/app/(components)/ui/button"
+import { Progress } from "@/app/(components)/ui/progress"
 
 // Use the helper types to overcome TypeScript issues
 type BookType = {

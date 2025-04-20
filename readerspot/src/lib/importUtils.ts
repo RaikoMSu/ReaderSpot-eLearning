@@ -1,2 +1,2 @@
 // Re-export utilities to allow importing with extensions
-export { cn } from './utils.ts'; 
+export { cn } from './utils'; 

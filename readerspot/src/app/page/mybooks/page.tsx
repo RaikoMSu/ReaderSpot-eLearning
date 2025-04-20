@@ -5,8 +5,10 @@ import { useAuth } from '@/app/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
-import { BookOpen, Trash2 } from 'lucide-react';
+import { BookOpen, Trash2, RefreshCw } from 'lucide-react';
+import { Button } from '@/app/(components)/ui/button';
 import Link from 'next/link';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface MyBook {
   id: number;
@@ -26,9 +28,14 @@ interface MyBook {
 export default function MyBooksPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
+  const pathname = usePathname();
   const [books, setBooks] = useState<MyBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const fetchMyBooks = async () => {
@@ -60,11 +67,19 @@ export default function MyBooksPage() {
         });
       } finally {
         setLoading(false);
+        setRefreshing(false);
       }
     };
 
     fetchMyBooks();
-  }, [user?.id, toast]);
+  }, [user?.id, toast, refreshKey]);
+
+  // Force a refresh when navigating to this page
+  useEffect(() => {
+    if (pathname === '/page/mybooks') {
+      setRefreshKey(prev => prev + 1);
+    }
+  }, [pathname]);
 
   const handleRemoveBook = async (bookId: string) => {
     if (!user?.id) return;
@@ -97,9 +112,33 @@ export default function MyBooksPage() {
     }
   };
 
+  const handleImageError = (bookId: string) => {
+    setImageErrors(prev => ({
+      ...prev,
+      [bookId]: true
+    }));
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setRefreshKey(prev => prev + 1);
+  };
+
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">My Books</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">My Books</h1>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Refreshing...' : 'Refresh'}
+        </Button>
+      </div>
       
       {loading ? (
         // Loading skeletons
@@ -131,15 +170,21 @@ export default function MyBooksPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-grow flex flex-col">
-                <div className="relative h-[180px] w-full mb-2">
-                  <img
-                    src={book.cover_image || '/default-book-cover.jpg'}
-                    alt={book.title}
-                    className="object-contain w-full h-full rounded-md"
-                    onError={(e) => {
-                      e.currentTarget.src = '/default-book-cover.jpg';
-                    }}
-                  />
+                <div className="relative h-[180px] w-full mb-2 flex items-center justify-center">
+                  {!imageErrors[book.book_id] ? (
+                    <img
+                      src={book.cover_image || '/default-book-cover.jpg'}
+                      alt={book.title}
+                      className="max-h-full max-w-full object-contain rounded-md"
+                      onError={() => handleImageError(book.book_id)}
+                    />
+                  ) : (
+                    <img
+                      src="/default-book-cover.jpg"
+                      alt={book.title}
+                      className="max-h-full max-w-full object-contain rounded-md"
+                    />
+                  )}
                 </div>
                 <p className="text-sm text-gray-600 line-clamp-3 flex-grow">
                   {book.description || 'No description available'}

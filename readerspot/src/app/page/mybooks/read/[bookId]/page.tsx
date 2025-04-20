@@ -26,6 +26,7 @@ export default function ReadBookPage() {
   const [bookDetails, setBookDetails] = useState<BookDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
   
   // In a real application, this would be the actual book content, potentially fetched from an API
   // For this example, we're using the book description as placeholder content
@@ -121,6 +122,10 @@ export default function ReadBookPage() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
   };
 
   if (loading) {
@@ -220,14 +225,20 @@ export default function ReadBookPage() {
       
       {/* Book Cover */}
       <div className="w-full max-w-sm mx-auto">
-        <img
-          src={bookDetails.cover_image || '/default-book-cover.jpg'}
-          alt={bookDetails.title}
-          className="w-full h-auto rounded-md shadow-md"
-          onError={(e) => {
-            e.currentTarget.src = '/default-book-cover.jpg';
-          }}
-        />
+        {!imageError ? (
+          <img
+            src={bookDetails.cover_image || '/default-book-cover.jpg'}
+            alt={bookDetails.title}
+            className="w-full h-auto rounded-md shadow-md"
+            onError={handleImageError}
+          />
+        ) : (
+          <img
+            src="/default-book-cover.jpg"
+            alt={bookDetails.title}
+            className="w-full h-auto rounded-md shadow-md"
+          />
+        )}
       </div>
     </div>
   );

@@ -132,52 +132,47 @@ export async function GET(request: Request) {
       try {
         console.log('Books API - Fetching preferences for user ID:', userId);
         
-        // Fetch user preferences
-        const { data: preferences, error: preferencesError } = await supabase
+        // Fetch user preferences from the correct table - using maybeSingle() instead of single()
+        // to handle missing rows gracefully without error
+        const { data: userPreferences, error: preferencesQueryError } = await supabase
           .from('user_preferences')
-          .select('preferred_genres')
+          .select('*')  // Select all columns to get a better picture of the data
           .eq('user_id', userId)
-          .single();
+          .maybeSingle();  // Use maybeSingle() instead of single() to avoid PGRST116 error
 
-        // Log results for debugging
-        console.log('Books API - Preferences query result:', { preferences, error: preferencesError });
-
-        // Check for errors or empty preferences
-        if (preferencesError) {
-          console.error('Books API - Error fetching user preferences:', preferencesError);
-          
-          // Try to fetch from user_profiles as fallback
-          if (preferencesError.code === 'PGRST116') {
-            console.log('Books API - Checking user_profiles table as fallback');
-            const { data: profile } = await supabase
-              .from('user_profiles')
-              .select('preferred_genres')
-              .eq('user_id', userId)
-              .single();
-              
-            console.log('Books API - User profile data:', profile);
-            
-            if (profile?.preferred_genres && Array.isArray(profile.preferred_genres)) {
-              console.log('Books API - Found genres in user_profiles:', profile.preferred_genres);
-              genresToSearch = profile.preferred_genres;
-            } else {
-              genresToSearch = ['Fiction', 'Mystery', 'Science Fiction'];
-              console.log('Books API - No user preferences found in either table, using default genres');
-            }
-          }
+        // Log full results for debugging
+        console.log('Books API - Full preferences data:', userPreferences);
+        
+        if (preferencesQueryError) {
+          // A real database error occurred (not just missing rows)
+          console.error('Books API - Database error:', preferencesQueryError);
+          genresToSearch = ['Fiction', 'Mystery', 'Science Fiction'];
+        } else if (!userPreferences) {
+          // No preferences found for this user
+          console.log('Books API - No preferences found for user, using default genres');
+          genresToSearch = ['Fiction', 'Mystery', 'Science Fiction'];
         } else {
-          // Use user's preferred genres if available
-          if (preferences?.preferred_genres?.length) {
-            console.log('Books API - Using preferred genres from user_preferences:', preferences.preferred_genres);
-            genresToSearch = preferences.preferred_genres;
+          // Found preferences, now handle different field name possibilities
+          console.log('Books API - Found user preferences:', userPreferences);
+          
+          // Check different possible field names based on the error
+          const genres = userPreferences.preferred_genres || 
+                         userPreferences.preferredGenres || 
+                         userPreferences.preferred_genre ||
+                         userPreferences.genre_preferences;
+          
+          if (genres && Array.isArray(genres) && genres.length > 0) {
+            console.log('Books API - Using user preferred genres:', genres);
+            genresToSearch = genres;
           } else {
-            // Default genres if none found
+            // No genres found in the user preferences
+            console.log('Books API - No genres found in user preferences, using default genres');
             genresToSearch = ['Fiction', 'Mystery', 'Science Fiction'];
-            console.log('Books API - Empty preferred_genres array, using default genres');
           }
         }
-      } catch (preferencesError) {
-        console.error('Books API - Exception fetching preferences:', preferencesError);
+      } catch (error) {
+        // Exception in the API call
+        console.error('Books API - Exception fetching preferences:', error);
         genresToSearch = ['Fiction', 'Mystery', 'Science Fiction'];
       }
     }
